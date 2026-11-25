@@ -1,41 +1,41 @@
 # pstack-codex
 
-pstack 的 Codex 适配。用 `poteto-mode` 选择开发流程、委派子代理、审查改动并验证实际行为。
+pstack adapted for Codex. Use `poteto-mode` to choose a development workflow, delegate to subagents, review changes, and verify behavior.
 
-基于 Lauren Tan 的 pstack **0.15.48**，取自 `cursor/plugins` 提交 [`ca782ed8b3c2c521cead8e1720d55c3a5dbf2347`](https://github.com/cursor/plugins/tree/ca782ed8b3c2c521cead8e1720d55c3a5dbf2347/pstack)。上游使用 MIT 许可证。本插件版本为 `0.15.48-codex.0`。
+Based on Lauren Tan's pstack **0.15.48** from the `cursor/plugins` repository. Upstream is MIT-licensed. This plugin is version `0.15.48-codex.0`. [Upstream commit](https://github.com/cursor/plugins/tree/ca782ed8b3c2c521cead8e1720d55c3a5dbf2347/pstack)
 
-## 安装
+## Installation
 
-首版面向 Codex 桌面端 Local / Worktree 和本机 Codex CLI。用以下命令从 GitHub 注册 Marketplace 并安装插件。
+This release supports Codex desktop in Local and Worktree modes and the local Codex CLI. Run these commands to register the GitHub marketplace and install the plugin.
 
 ```sh
 codex plugin marketplace add Vamdawn/pstack-codex
 codex plugin add pstack-codex@pstack-codex
 ```
 
-Codex 从 GitHub 获取 Marketplace，安装时只复制 `plugin/` 里的插件文件。
+Codex fetches the marketplace from GitHub and copies only the files in `plugin/` during installation.
 
-也可以注册 Marketplace 后，在桌面端 Plugins 目录的 `pstack-codex` 来源中安装。新开任务，使用：
+After registering the marketplace, you can also install the plugin from the `pstack-codex` source in the desktop Plugins directory. Start a new chat and invoke the skill explicitly.
 
 ```text
-$pstack-codex:poteto-mode 找到这个回归的原因，修复并运行对应的检查。
+$pstack-codex:poteto-mode Find the cause of this regression, fix it, and run the relevant checks.
 ```
 
-使用 `$pstack-codex:setup-pstack` 检查当前可用能力，或用 `$pstack-codex:poteto-help` 查找具体工作流。插件默认显式调用，项目设置中的角色模型和推理强度为可选项。
+Use `$pstack-codex:setup-pstack` to check available capabilities or `$pstack-codex:poteto-help` to find a workflow. Skills require explicit invocation by default. You can optionally set a model and reasoning effort per role in the project configuration.
 
-## 使用范围
+## Usage and requirements
 
-- 并行写入使用各自的 Git worktree。纯审查读取指定工作区，需要落盘的复现使用独立 worktree。
-- GitHub 使用 `gh` 和随包的 `watch-pr`。GitLab 使用 `glab`，支持单个 MR 的查询和持续监控。明确指定的 PR/MR URL 或 remote 优先，其次使用当前分支跟踪的 remote，再尝试 `origin` 或唯一 remote。自建实例可通过项目本地 Git 配置声明，例如 `git config --local --add pstack.gitlabHost gitlab.example.net`。
-- 涉及 PR/MR 的技能需要 Git、Bun 和对应 forge 的已认证 CLI。GitHub `watch-pr` 首次运行会把锁定的 Bun 依赖安装到私有临时缓存，需要访问 npm。工作树审计还用到 Bash 和 `jq`。`statechart` 按上游方式使用 TypeScript 运行时、TLC 和 Java。交互验证使用项目已有的浏览器、PTY 或其他驱动。
-- 当前会话的持续检查按完成条件或阻塞状态结束，留下续跑记录。定时执行可由用户在 Codex Scheduled 单独设置。
-- `make-bot-ui` 和 Benny 自动化留待后续。GitLab 首版覆盖单 MR。
+- Use separate Git worktrees for parallel edits. Read-only reviews inspect the specified workspace. Reproductions that write files use an isolated worktree.
+- GitHub workflows use `gh` and the bundled `watch-pr`. GitLab workflows use `glab` to inspect and monitor a single merge request. The plugin checks for an explicit PR or MR URL or remote first, then the current branch's tracking remote, then `origin` or the repository's only remote. Register a self-managed instance in the project's local Git configuration, for example with `git config --local --add pstack.gitlabHost gitlab.example.net`.
+- PR and MR skills require Git, Bun, and an authenticated CLI for the hosting service. On its first run, GitHub's `watch-pr` installs locked dependencies into a private temporary cache and needs npm access. Worktree auditing also uses Bash and `jq`. The `statechart` skill uses a TypeScript runtime, TLC, and Java, as in upstream pstack. Interactive verification uses the project's existing browser, PTY, or other driver.
+- Monitoring in the current chat ends when the completion condition is met or a blocker is reached. It leaves a note for resuming the work. You can configure scheduled runs separately in Codex Scheduled.
+- `make-bot-ui` and Benny automation are deferred. GitLab support in this release covers one merge request at a time.
 
-[使用指南](plugin/docs/guide/README.md) · [模型与工作区约定](plugin/skills/poteto-mode/references/codex-runtime.md) · [逐技能适配清单](plugin/docs/compatibility.md)
+[User guide](plugin/docs/guide/README.md) · [Model and workspace conventions](plugin/skills/poteto-mode/references/codex-runtime.md) · [Skill compatibility](plugin/docs/compatibility.md)
 
-## 维护
+## Maintenance
 
-需要跟进上游时，从本 README 记录的提交查看 `pstack/` 差异，手动应用适合 Codex 的改动，更新适配清单并重新验收。每次换上游版本，版本号从 `<上游版本>-codex.0` 开始。同一上游版本的适配修复递增 `N`。
+To update from upstream, review changes under `pstack/` since the commit linked above. Apply the changes that fit Codex, update the compatibility list, and rerun verification. Start each new upstream release at `<upstream-version>-codex.0`. Increment `N` in `<upstream-version>-codex.N` for adaptation fixes on the same upstream release.
 
 ```sh
 node checks/check-package.mjs
