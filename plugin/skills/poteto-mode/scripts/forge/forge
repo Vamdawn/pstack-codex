@@ -1,0 +1,101 @@
+#!/usr/bin/env bun
+import { setTimeout as delay } from "node:timers/promises";
+import { parseArgs, type ParseArgsConfig } from "node:util";
+import { detectMergeRequest, gitlabClient, readMergeRequest, type Observation } from "./gitlab.ts";
+import { positiveInteger, resolveTarget } from "./remote.ts";
+
+const usage = `Usage:
+  forge resolve [--remote <name> | --url <remote-or-PR/MR-url>]
+  forge watch-mr [--remote <name> | --url <remote-or-MR-url>] [--mr <iid>]
+                 [--status-only] [--interval <seconds>] [--timeout <seconds>]
+
+GitLab watch uses read-only glab calls. Defaults: 30s interval, 15m timeout.`;
+
+function seconds(value: string | undefined, name: string, fallback: number): number {
+  if (value === undefined) return fallback * 1_000;
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0 || number > 86_400) {
+    throw new Error(`${name} must be between 0 and 86400 seconds, excluding zero.`);
+  }
+  return number * 1_000;
+}
+
+async function run(argv: string[]): Promise<number> {
+  const [command, ...args] = argv;
+  if (!command || command === "--help" || args.includes("--help")) {
+    process.stdout.write(usage + "\n");
+    return 0;
+  }
+  if (command !== "resolve" && command !== "watch-mr") throw new Error("Unknown forge command. See --help.");
+
+  const targetOptions = {
+    remote: { type: "string" },
+    url: { type: "string" },
+  } satisfies ParseArgsConfig["options"];
+  if (command === "resolve") {
+    const { values } = parseArgs({ args, options: targetOptions });
+    process.stdout.write(JSON.stringify(resolveTarget(values)) + "\n");
+    return 0;
+  }
+
+  const { values } = parseArgs({
+    args,
+    options: {
+      ...targetOptions,
+      mr: { type: "string" },
+      "status-only": { type: "boolean" },
+      interval: { type: "string" },
+      timeout: { type: "string" },
+    },
+  });
+  const target = resolveTarget(values);
+  if (target.provider !== "gitlab") throw new Error("watch-mr requires a GitLab target. Use watch-pr for GitHub.");
+  const explicitNumber = positiveInteger(values.mr);
+  if (values.mr !== undefined && explicitNumber === undefined) throw new Error("--mr requires a positive integer IID.");
+  if (target.number && explicitNumber && target.number !== explicitNumber) {
+    throw new Error("--mr and the merge request URL identify different IIDs.");
+  }
+
+  const interval = seconds(values.interval, "--interval", 30);
+  const deadline = performance.now() + seconds(values.timeout, "--timeout", 900);
+  const remaining = () => deadline - performance.now();
+  const read = gitlabClient(target.host, remaining);
+  const number = explicitNumber ?? target.number ?? detectMergeRequest(target, read);
+  const emit = (observation: Observation | { status: "TIMEOUT"; reason: string }) =>
+    process.stdout.write(JSON.stringify({
+      provider: target.provider, host: target.host, project: target.project, number,
+      observedAt: new Date().toISOString(), ...observation,
+    }) + "\n");
+
+  let previous = "";
+  while (remaining() > 0) {
+    let observation: Observation;
+    try {
+      observation = readMergeRequest(target, number, read);
+    } catch (error) {
+      observation = {
+        status: "UNKNOWN",
+        reason: error instanceof Error ? error.message : "GitLab query failed.",
+      };
+    }
+    if (remaining() <= 0) break;
+    const key = JSON.stringify(observation);
+    if (key !== previous) emit(observation);
+    if (observation.status === "UNKNOWN") return 1;
+    if (values["status-only"] || observation.status === "READY" || observation.status === "MERGED") return 0;
+    if (observation.status === "BLOCKED" || observation.status === "CLOSED") return 1;
+    previous = key;
+    await delay(Math.max(0, Math.min(interval, remaining())));
+  }
+  emit({ status: "TIMEOUT", reason: "watch_deadline_reached" });
+  return 3;
+}
+
+try {
+  process.exitCode = await run(process.argv.slice(2));
+} catch (error) {
+  const message = error instanceof TypeError ? "Invalid command arguments. See --help." :
+    error instanceof Error ? error.message : "Forge command failed.";
+  process.stderr.write(message + "\n");
+  process.exitCode = 2;
+}

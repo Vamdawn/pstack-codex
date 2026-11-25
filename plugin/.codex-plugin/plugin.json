@@ -1,0 +1,20 @@
+{
+  "name": "pstack-codex",
+  "version": "0.15.48-codex.0",
+  "description": "Codex adaptation of Lauren Tan's pstack engineering workflows for implementation, independent review, and verification.",
+  "author": {
+    "name": "pstack-codex contributors"
+  },
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "pstack-codex",
+    "shortDescription": "Verified engineering workflows",
+    "longDescription": "Use poteto-mode to choose and run a coding playbook. Delegate work to Codex subagents, isolate parallel edits, and verify results on the real surface.",
+    "developerName": "pstack-codex contributors",
+    "category": "Developer Tools",
+    "capabilities": [],
+    "logo": "./assets/logo.png",
+    "defaultPrompt": "Use poteto-mode to implement and verify this change."
+  }
+}
