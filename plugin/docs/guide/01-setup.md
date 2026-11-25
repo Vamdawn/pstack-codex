@@ -2,12 +2,14 @@
 
 ## Install
 
-Register this checkout as a local Codex marketplace, then install pstack-codex from it. Run these commands with the full path to the checkout.
+Register the GitHub marketplace and install the plugin.
 
-    codex plugin marketplace add /absolute/path/to/pstack-codex
-    codex plugin add pstack-codex@pstack-codex
+```sh
+codex plugin marketplace add Vamdawn/pstack-codex
+codex plugin add pstack-codex@pstack-codex
+```
 
-In Codex desktop, select the installed plugin in Plugins if the client exposes that action. You can also install from its repository marketplace in the app. Start a fresh Codex session in the project you intend to work on.
+After registering the marketplace, you can also install the plugin from the `pstack-codex` source in the desktop Plugins directory. Start a new Codex chat in the project you intend to work on.
 
 ## Pick your models
 
